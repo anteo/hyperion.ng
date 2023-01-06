@@ -73,7 +73,7 @@ public:
 	bool setInput(int input) override;
 	bool setWidthHeight(int width, int height) override;
 	void setEncoding(QString enc);
-	void setBrightnessContrastSaturationHue(int brightness, int contrast, int saturation, int hue);
+	void setControlValues(const QJsonObject& config);
 	void setSignalThreshold(double redSignalThreshold, double greenSignalThreshold, double blueSignalThreshold, int noSignalCounterThreshold = 50);
 	void setSignalDetectionOffset( double verticalMin, double horizontalMin, double verticalMax, double horizontalMax);
 	void setSignalDetectionEnable(bool enable);
@@ -176,7 +176,7 @@ private:
 	ColorRgb _noSignalThresholdColor;
 	bool     _cecDetectionEnabled, _cecStandbyActivated, _signalDetectionEnabled, _noSignalDetected;
 	int      _noSignalCounter;
-	int		_brightness, _contrast, _saturation, _hue;
+	QMap<QString, int> _controlValues;
 	double   _x_frac_min;
 	double   _y_frac_min;
 	double   _x_frac_max;

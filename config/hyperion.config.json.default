@@ -94,7 +94,17 @@
 		"hardware_brightness"   : 0,
 		"hardware_contrast"     : 0,
 		"hardware_saturation"   : 0,
-		"hardware_hue"          : 0
+		"hardware_hue"			: 0,
+		"hardware_manual_exposure"	: false,
+		"hardware_auto_gain"	: true,
+		"hardware_auto_white_balance"	: true,
+		"hardware_auto_exposure_bias"	: 0,
+		"hardware_exposure"		: 976,
+		"hardware_gain"			: 100,
+		"hardware_r_gain"		: 1024,
+		"hardware_g_gain"		: 1024,
+		"hardware_b_gain"		: 1024,
+		"hardware_power_line_frequency"	: "1"
 	},
 
 	"framegrabber" :

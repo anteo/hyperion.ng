@@ -34,22 +34,37 @@
 // Constants
 namespace { const bool verbose = false; }
 
+struct ControlIDProperty {
+	int id;
+	QString name;
+};
+
 // Need more video properties? Visit https://www.kernel.org/doc/html/v4.14/media/uapi/v4l/control.html
-using ControlIDPropertyMap = QMap<unsigned int, QString>;
-inline QMap<unsigned int, QString> initControlIDPropertyMap()
+using ControlIDPropertyList = QList<ControlIDProperty>;
+inline QList<ControlIDProperty> initControlIDPropertyList()
 {
-	QMap<unsigned int, QString> propertyMap
+	QList<ControlIDProperty> propertyList
 	{
 		{V4L2_CID_BRIGHTNESS	, "brightness"	},
 		{V4L2_CID_CONTRAST		, "contrast"	},
 		{V4L2_CID_SATURATION	, "saturation"	},
-		{V4L2_CID_HUE 			, "hue"			}
+		{V4L2_CID_HUE 			, "hue"			},
+		{V4L2_CID_AUTOGAIN      , "auto_gain"	},
+		{V4L2_CID_EXPOSURE_AUTO 		, "manual_exposure"			},
+		{V4L2_CID_AUTO_WHITE_BALANCE	, "auto_white_balance"		},
+		{V4L2_CID_POWER_LINE_FREQUENCY	, "power_line_frequency"	},
+		{V4L2_CID_AUTO_EXPOSURE_BIAS	, "auto_exposure_bias"		},
+		{V4L2_CID_EXPOSURE		, "exposure"	},
+		{V4L2_CID_GAIN			, "gain"		},
+		{V4L2_CID_R_GAIN		, "r_gain"		},
+		{V4L2_CID_G_GAIN		, "g_gain"		},
+		{V4L2_CID_B_GAIN		, "b_gain"		},
 	};
 
-	return propertyMap;
+	return propertyList;
 };
 
-Q_GLOBAL_STATIC_WITH_ARGS(ControlIDPropertyMap, _controlIDPropertyMap, (initControlIDPropertyMap()));
+Q_GLOBAL_STATIC_WITH_ARGS(ControlIDPropertyList, _controlIDPropertyList, (initControlIDPropertyList()));
 
 static PixelFormat GetPixelFormat(const unsigned int format)
 {
@@ -84,10 +99,6 @@ V4L2Grabber::V4L2Grabber()
 	, _signalDetectionEnabled(true)
 	, _noSignalDetected(false)
 	, _noSignalCounter(0)
-	, _brightness(0)
-	, _contrast(0)
-	, _saturation(0)
-	, _hue(0)
 	, _x_frac_min(0.25)
 	, _y_frac_min(0.25)
 	, _x_frac_max(0.75)
@@ -634,6 +645,7 @@ void V4L2Grabber::init_device(VideoStandard videoStandard)
 		{
 			streamparms.parm.capture.timeperframe.numerator = 1;
 			streamparms.parm.capture.timeperframe.denominator = _fps;
+			streamparms.parm.capture.capturemode = V4L2_MODE_VIDEO;
 			(-1 == xioctl(VIDIOC_S_PARM, &streamparms))
 			?	Debug(_log, "Frame rate settings not supported.")
 			:	Debug(_log, "Set framerate to %d fps", streamparms.parm.capture.timeperframe.denominator);
@@ -644,47 +656,32 @@ void V4L2Grabber::init_device(VideoStandard videoStandard)
 	_lineLength = fmt.fmt.pix.bytesperline;
 
 	// set brightness, contrast, saturation, hue
-	for (auto control : _deviceControls[_currentDevicePath])
+	for (auto control : *_controlIDPropertyList)
 	{
+		auto property = control.name;
+		auto deviceControls = _deviceControls[_currentDevicePath];
+		if (!_controlValues.contains(property)) continue;
+		DeviceControls *deviceControl = nullptr;
+		for (auto &c : deviceControls)
+		{
+			if (c.property == property)
+			{
+				deviceControl = &c;
+				break;
+			}
+		}
+		if (!deviceControl) continue;
 		struct v4l2_control control_S;
 		CLEAR(control_S);
-		control_S.id = _controlIDPropertyMap->key(control.property);
-
-		if (_controlIDPropertyMap->key(control.property) == V4L2_CID_BRIGHTNESS)
+		control_S.id = control.id;
+		int value = _controlValues[property];
+		if (value >= deviceControl->minValue && value <= deviceControl->maxValue)
 		{
-			if (_brightness >= control.minValue && _brightness <= control.maxValue && _brightness != control.currentValue)
-			{
-				control_S.value = _brightness;
-				if (xioctl(VIDIOC_S_CTRL, &control_S) >= 0)
-					Debug(_log,"Set brightness to %i", _brightness);
-			}
-		}
-		else if (_controlIDPropertyMap->key(control.property) == V4L2_CID_CONTRAST)
-		{
-			if (_contrast >= control.minValue && _contrast <= control.maxValue && _contrast != control.currentValue)
-			{
-				control_S.value = _contrast;
-				if (xioctl(VIDIOC_S_CTRL, &control_S) >= 0)
-					Debug(_log,"Set contrast to %i", _contrast);
-			}
-		}
-		else if (_controlIDPropertyMap->key(control.property) == V4L2_CID_SATURATION)
-		{
-			if (_saturation >= control.minValue && _saturation <= control.maxValue && _saturation != control.currentValue)
-			{
-				control_S.value = _saturation;
-				if (xioctl(VIDIOC_S_CTRL, &control_S) >= 0)
-					Debug(_log,"Set saturation to %i", _saturation);
-			}
-		}
-		else if (_controlIDPropertyMap->key(control.property) == V4L2_CID_HUE)
-		{
-			if (_hue >= control.minValue && _hue <= control.maxValue && _hue != control.currentValue)
-			{
-				control_S.value = _hue;
-				if (xioctl(VIDIOC_S_CTRL, &control_S) >= 0)
-					Debug(_log,"Set hue to %i", _hue);
-			}
+			control_S.value = value;
+			if (xioctl(VIDIOC_S_CTRL, &control_S) >= 0)
+				Debug(_log, "Set control '%s' value to %i", QSTRING_CSTR(property), value);
+			else
+				log_errno_exception("Failed to set control '" + property + "' value");
 		}
 	}
 
@@ -1188,15 +1185,26 @@ void V4L2Grabber::setEncoding(QString enc)
 	}
 }
 
-void V4L2Grabber::setBrightnessContrastSaturationHue(int brightness, int contrast, int saturation, int hue)
+void V4L2Grabber::setControlValues(const QJsonObject& config)
 {
-	if (_brightness != brightness || _contrast != contrast || _saturation != saturation || _hue != hue)
+	for (const QString& key: config.keys())
 	{
-		_brightness = brightness;
-		_contrast = contrast;
-		_saturation = saturation;
-		_hue = hue;
+		if (!key.startsWith("hardware_"))
+			continue;
 
+		QString name = key.mid(9);
+		auto jsonValue = config.value(key);
+		int value;
+		if (jsonValue.isBool())
+			value = jsonValue.toBool() ? 1 : 0;
+		else if (jsonValue.isDouble())
+			value = jsonValue.toInt();
+		else if (jsonValue.isString())
+			value = jsonValue.toString().toInt();
+		else
+			continue;
+
+		_controlValues[name] = value;
 		_reload = true;
 	}
 }
@@ -1534,36 +1542,32 @@ void V4L2Grabber::enumVideoCaptureDevices()
 
 			// Enumerate video control IDs
 			QList<DeviceControls> deviceControlList;
-			for (auto itDeviceControls = _controlIDPropertyMap->constBegin(); itDeviceControls != _controlIDPropertyMap->constEnd(); itDeviceControls++)
+			for (auto itDeviceControls : *_controlIDPropertyList)
 			{
 				struct v4l2_queryctrl queryctrl;
 				CLEAR(queryctrl);
 
-				queryctrl.id = itDeviceControls.key();
+				queryctrl.id = itDeviceControls.id;
 				if (xioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) < 0)
-					break;
+					continue;
 				if (queryctrl.flags & V4L2_CTRL_FLAG_DISABLED)
-					break;
+					continue;
 
 				DeviceControls control;
-				control.property = itDeviceControls.value();
+				control.property = itDeviceControls.name;
 				control.minValue = queryctrl.minimum;
 				control.maxValue = queryctrl.maximum;
 				control.step = queryctrl.step;
 				control.defaultValue = queryctrl.default_value;
 
-				struct v4l2_ext_control ctrl;
-				struct v4l2_ext_controls ctrls;
+				struct v4l2_control ctrl;
 				CLEAR(ctrl);
-				CLEAR(ctrls);
 
-				ctrl.id = itDeviceControls.key();
-				ctrls.count = 1;
-				ctrls.controls = &ctrl;
-				if (xioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls) == 0)
+				ctrl.id = itDeviceControls.id;
+				if (xioctl(fd, VIDIOC_G_CTRL, &ctrl) == 0)
 				{
 					control.currentValue = ctrl.value;
-					DebugIf(verbose, _log, "%s: min=%i, max=%i, step=%i, default=%i, current=%i", QSTRING_CSTR(itDeviceControls.value()), control.minValue, control.maxValue, control.step, control.defaultValue, control.currentValue);
+					DebugIf(verbose, _log, "%s: min=%i, max=%i, step=%i, default=%i, current=%i", QSTRING_CSTR(itDeviceControls.name), control.minValue, control.maxValue, control.step, control.defaultValue, control.currentValue);
 				}
 				else
 					break;

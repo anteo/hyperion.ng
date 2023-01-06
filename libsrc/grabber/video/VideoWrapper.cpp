@@ -97,11 +97,7 @@ void VideoWrapper::handleSettingsUpdate(settings::type type, const QJsonDocument
 				obj["cropBottom"].toInt(0));
 
 			// Brightness, Contrast, Saturation, Hue
-			_grabber.setBrightnessContrastSaturationHue(
-				obj["hardware_brightness"].toInt(0),
-				obj["hardware_contrast"].toInt(0),
-				obj["hardware_saturation"].toInt(0),
-				obj["hardware_hue"].toInt(0));
+			_grabber.setControlValues(obj);
 
 #if defined(ENABLE_CEC) && defined(ENABLE_V4L2)
 			// CEC Standby

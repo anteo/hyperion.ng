@@ -176,6 +176,90 @@
 			"access": "expert",
 			"propertyOrder": 19
 		},
+		"hardware_manual_exposure": {
+			"type": "boolean",
+			"title": "edt_conf_v4l2_hardware_manual_exposure_title",
+			"default": false,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 20
+		},
+		"hardware_auto_gain": {
+			"type": "boolean",
+			"title": "edt_conf_v4l2_hardware_auto_gain_title",
+			"default": true,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 21
+		},
+		"hardware_auto_white_balance": {
+			"type": "boolean",
+			"title": "edt_conf_v4l2_hardware_auto_white_balance_title",
+			"default": true,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 22
+		},
+		"hardware_auto_exposure_bias": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_auto_exposure_bias_title",
+			"default": 0,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 23
+		},
+		"hardware_exposure": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_exposure_title",
+			"default": 976,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 24
+		},
+		"hardware_gain": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_gain_title",
+			"default": 100,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 25
+		},
+		"hardware_r_gain": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_r_gain_title",
+			"default": 1024,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 26
+		},
+		"hardware_g_gain": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_g_gain_title",
+			"default": 1024,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 27
+		},
+		"hardware_b_gain": {
+			"type": "integer",
+			"title": "edt_conf_v4l2_hardware_b_gain_title",
+			"default": 1024,
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 28
+		},
+		"hardware_power_line_frequency": {
+			"type": "string",
+			"title": "edt_conf_v4l2_hardware_power_line_frequency_title",
+			"enum": [ "0", "1", "2", "3" ],
+			"default": "1",
+			"options": {
+				"enum_titles": [ "edt_conf_enum_DISABLED", "edt_conf_enum_50HZ", "edt_conf_enum_60HZ", "edt_conf_enum_AUTO" ]
+			},
+			"required": true,
+			"access": "expert",
+			"propertyOrder": 29
+		},
 		"cropLeft": {
 			"type": "integer",
 			"title": "edt_conf_v4l2_cropLeft_title",
@@ -183,7 +267,7 @@
 			"default": 0,
 			"append": "edt_append_pixel",
 			"required": true,
-			"propertyOrder": 20
+			"propertyOrder": 100
 		},
 		"cropRight": {
 			"type": "integer",
@@ -192,7 +276,7 @@
 			"default": 0,
 			"append": "edt_append_pixel",
 			"required": true,
-			"propertyOrder": 21
+			"propertyOrder": 101
 		},
 		"cropTop": {
 			"type": "integer",
@@ -201,7 +285,7 @@
 			"default": 0,
 			"append": "edt_append_pixel",
 			"required": true,
-			"propertyOrder": 22
+			"propertyOrder": 102
 		},
 		"cropBottom": {
 			"type": "integer",
@@ -210,7 +294,7 @@
 			"default": 0,
 			"append": "edt_append_pixel",
 			"required": true,
-			"propertyOrder": 23
+			"propertyOrder": 103
 		},
 		"cecDetection": {
 			"type": "boolean",
@@ -218,7 +302,7 @@
 			"default": false,
 			"required": true,
 			"access": "advanced",
-			"propertyOrder": 24
+			"propertyOrder": 104
 		},
 		"signalDetection": {
 			"type": "boolean",
@@ -226,7 +310,7 @@
 			"default": false,
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 25
+			"propertyOrder": 105
 		},
 		"redSignalThreshold": {
 			"type": "integer",
@@ -242,7 +326,7 @@
 			},
 			"access": "expert",
 			"required": true,
-			"propertyOrder": 26
+			"propertyOrder": 106
 		},
 		"greenSignalThreshold": {
 			"type": "integer",
@@ -258,7 +342,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 27
+			"propertyOrder": 107
 		},
 		"blueSignalThreshold": {
 			"type": "integer",
@@ -274,7 +358,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 28
+			"propertyOrder": 108
 		},
 		"noSignalCounterThreshold": {
 			"type": "integer",
@@ -289,7 +373,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 29
+			"propertyOrder": 109
 		},
 		"sDVOffsetMin": {
 			"type": "number",
@@ -305,7 +389,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 30
+			"propertyOrder": 110
 		},
 		"sDVOffsetMax": {
 			"type": "number",
@@ -321,7 +405,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 31
+			"propertyOrder": 111
 		},
 		"sDHOffsetMin": {
 			"type": "number",
@@ -337,7 +421,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 32
+			"propertyOrder": 112
 		},
 		"sDHOffsetMax": {
 			"type": "number",
@@ -353,7 +437,7 @@
 			},
 			"required": true,
 			"access": "expert",
-			"propertyOrder": 33
+			"propertyOrder": 113
 		}
 	},
 		"additionalProperties": true

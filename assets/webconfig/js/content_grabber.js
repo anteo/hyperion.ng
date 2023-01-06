@@ -423,20 +423,16 @@ $(document).ready(function () {
         if (deviceSelected === configuredDevice) {
           // Only if the device reported properties, use the configured values. In case no properties are presented, the device properties cannot be controlled.
           if (deviceProperties.hasOwnProperty('properties') && !jQuery.isEmptyObject(deviceProperties.properties)) {
-            let properties = {
-              brightness: { current: window.serverConfig.grabberV4L2.hardware_brightness },
-              contrast: { current: window.serverConfig.grabberV4L2.hardware_contrast },
-              saturation: { current: window.serverConfig.grabberV4L2.hardware_saturation },
-              hue: { current: window.serverConfig.grabberV4L2.hardware_hue }
-            };
-            deviceProperties.properties = properties;
+            for (const [property, options] of Object.entries(deviceProperties.properties)) {
+              options.current = window.serverConfig.grabberV4L2[`hardware_${property}`];
+            }
           }
         }
 
-        updateDeviceProperties(deviceProperties.properties, "brightness", "hardware_brightness");
-        updateDeviceProperties(deviceProperties.properties, "contrast", "hardware_contrast");
-        updateDeviceProperties(deviceProperties.properties, "saturation", "hardware_saturation");
-        updateDeviceProperties(deviceProperties.properties, "hue", "hardware_hue");
+        const propertyNames = Object.keys(conf_editor_video.schema.properties.grabberV4L2.properties).filter((p) => p.startsWith('hardware_')).map((p) => p.substring(9));
+        for (const name of propertyNames) {
+          updateDeviceProperties(deviceProperties.properties, name, `hardware_${name}`);
+        }
 
         var video_inputs = deviceProperties.video_inputs;
         if (video_inputs.length <= 1) {
@@ -677,17 +673,10 @@ $(document).ready(function () {
       if (deviceProperties.hasOwnProperty('default')) {
         if (deviceProperties.default.hasOwnProperty('properties')) {
           defaultDeviceProperties = deviceProperties.default.properties;
-          if (defaultDeviceProperties.brightness) {
-            conf_editor_video.getEditor("root.grabberV4L2.hardware_brightness").setValue(defaultDeviceProperties.brightness);
-          }
-          if (defaultDeviceProperties.contrast) {
-            conf_editor_video.getEditor("root.grabberV4L2.hardware_contrast").setValue(defaultDeviceProperties.contrast);
-          }
-          if (defaultDeviceProperties.saturation) {
-            conf_editor_video.getEditor("root.grabberV4L2.hardware_saturation").setValue(defaultDeviceProperties.saturation);
-          }
-          if (defaultDeviceProperties.hue) {
-            conf_editor_video.getEditor("root.grabberV4L2.hardware_hue").setValue(defaultDeviceProperties.hue);
+          for (const [property, value] of Object.entries(defaultDeviceProperties)) {
+            const editor = conf_editor_video.getEditor(`root.grabberV4L2.hardware_${property}`);
+            if (!editor) continue;
+            editor.setValue(value);
           }
         }
       }

@@ -751,6 +751,32 @@ void V4L2Grabber::init_device(VideoStandard videoStandard)
 		return;
 	}
 
+	if (!_lineLength)
+	{
+		switch (_pixelFormat)
+		{
+			case PixelFormat::UYVY:
+			case PixelFormat::YUYV:
+			case PixelFormat::BGR16:
+				_lineLength = _width << 1;
+				break;
+			case PixelFormat::I420:
+			case PixelFormat::NV12:
+				_lineLength = _width;
+				break;
+			case PixelFormat::BGR24:
+				_lineLength = (_width << 1) + _width;
+				break;
+			case PixelFormat::RGB32:
+			case PixelFormat::BGR32:
+				_lineLength = _width << 2;
+				break;
+			default:
+				// MJPEG, NO_CHANGE
+				break;
+		}
+	}
+
 	switch (_ioMethod)
 	{
 		case IO_METHOD_READ:

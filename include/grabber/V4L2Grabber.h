@@ -50,9 +50,9 @@ public:
 				int height		= 0;
 				QList<int> framerates	= QList<int>();
 			};
-			QMultiMap<PixelFormat, EncodingProperties> encodingFormats = QMultiMap<PixelFormat, EncodingProperties>();
+			QMultiMap<PixelFormat, EncodingProperties> encodingFormats = QMultiMap<PixelFormat, struct EncodingProperties>();
 		};
-		QMap<int, InputProperties> inputs = QMap<int, InputProperties>();
+		QMap<int, InputProperties> inputs = QMap<int, struct InputProperties>();
 	};
 
 	struct DeviceControls

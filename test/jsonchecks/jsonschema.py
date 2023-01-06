@@ -22,6 +22,7 @@ import re
 import socket
 import sys
 import textwrap
+import collections
 
 try:
     from collections import MutableMapping

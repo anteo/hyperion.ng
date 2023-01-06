@@ -1080,6 +1080,13 @@ $(document).ready(function () {
       $('#btn_test_controller').hide();
 
       switch (ledType) {
+        case "magiclink":
+          if (isCurrentDevice) {
+            $(conf_editor.getEditor("root.specificOptions.hostList").container).hide();
+            conf_editor.getEditor("root.specificOptions.host").disable();
+            disableAutoResolvedGeneralOptions();
+            break;
+          }
         case "cololight":
         case "wled":
         case "nanoleaf":
@@ -1211,6 +1218,7 @@ $(document).ready(function () {
           }
           break;
 
+        case "magiclink":
         case "cololight":
         case "wled":
           var hostList = conf_editor.getEditor("root.specificOptions.hostList").getValue();
@@ -1302,7 +1310,7 @@ $(document).ready(function () {
             host.disable();
             host.setValue(val);
             //Trigger getProperties via host value
-            conf_editor.notifyWatchers(specOptPath + "host");
+            //conf_editor.notifyWatchers(specOptPath + "host");
             break;
         }
 
@@ -1324,6 +1332,7 @@ $(document).ready(function () {
         let params = {};
         switch (ledType) {
 
+          case "magiclink":
           case "cololight":
             params = { host: host };
             getProperties_device(ledType, host, params);
@@ -1590,10 +1599,7 @@ $(document).ready(function () {
   $("#leddevices").append(createSel(optArr[2], $.i18n('conf_leds_optgroup_RPiGPIO')));
   $("#leddevices").append(createSel(optArr[3], $.i18n('conf_leds_optgroup_network')));
   $("#leddevices").append(createSel(optArr[4], $.i18n('conf_leds_optgroup_usb')));
-
-  if (storedAccess === 'expert' || window.serverConfig.device.type === "file") {
-    $("#leddevices").append(createSel(optArr[5], $.i18n('conf_leds_optgroup_other')));
-  }
+  $("#leddevices").append(createSel(optArr[5], $.i18n('conf_leds_optgroup_other')));
 
   $("#leddevices").val(window.serverConfig.device.type);
   $("#leddevices").trigger("change");
@@ -1769,6 +1775,7 @@ function saveLedConfig(genDefLayout = false) {
     case "sk9822":
     case "ws2812spi":
     case "piblaster":
+    case "magiclink":
     default:
       if (genDefLayout === true) {
         ledConfig = {
@@ -2003,6 +2010,37 @@ var updateSelectList = function (ledType, discoveryInfo) {
     default:
   }
 
+  if (ledType === 'magiclink') {
+    key = 'hostList';
+
+    if (discoveryInfo.devices.length == 0) {
+      enumVals.push("NONE");
+      enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+      $('#btn_submit_controller').prop('disabled', true);
+      showAllDeviceInputOptions(key, false);
+    } else {
+      for (const device of discoveryInfo.devices) {
+        enumVals.push(device.address);
+        enumTitelVals.push(device.name + " (" + device.address + ", RSSI: " + device.rssi + ")");
+      }
+      addCustom = true;
+      var configuredDeviceType = window.serverConfig.device.type;
+      var configuredHost = window.serverConfig.device.host;
+      if (ledType === configuredDeviceType) {
+        if ($.inArray(configuredHost, enumVals) != -1) {
+          enumDefaultVal = configuredHost;
+        } else if (configuredHost === "CUSTOM") {
+          enumDefaultVal = "CUSTOM";
+        } else {
+          addSelect = true;
+        }
+      }
+      else {
+        addSelect = true;
+      }
+    }
+  }
+
   if (enumVals.length > 0) {
     updateJsonEditorSelection(conf_editor, 'root.specificOptions', key, addSchemaElements, enumVals, enumTitelVals, enumDefaultVal, addSelect, addCustom);
   }
@@ -2080,6 +2118,19 @@ function updateElements(ledType, key) {
   if (devicesProperties[ledType][key]) {
     var hardwareLedCount = 1;
     switch (ledType) {
+      case "magiclink":
+        var ledProperties = devicesProperties[ledType][key];
+
+        if (ledProperties) {
+          hardwareLedCount = ledProperties.currentLedCount;
+          let specificOptions = conf_editor.getEditor("root.specificOptions").getValue();
+          let schemaKeys = Object.keys(conf_editor.getEditor('root.specificOptions').schema.properties);
+          let assignableOptions = Object.fromEntries(Object.entries(ledProperties).filter(([key]) => schemaKeys.includes(key)));
+          Object.assign(specificOptions, assignableOptions);
+          conf_editor.getEditor("root.specificOptions").setValue(specificOptions);
+        }
+        conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
+        break;
       case "cololight":
         var ledProperties = devicesProperties[ledType][key];
 

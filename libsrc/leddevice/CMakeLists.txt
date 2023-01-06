@@ -11,8 +11,13 @@ if ( ENABLE_DEV_SERIAL )
 	find_package(Qt${QT_VERSION_MAJOR} COMPONENTS SerialPort REQUIRED)
 endif()
 
+if ( ENABLE_DEV_MAGICLINK )
+	find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Bluetooth DBus REQUIRED)
+endif()
+
 include_directories(
 	dev_hid
+	dev_magiclink
 	dev_net
 	dev_other
 	dev_serial
@@ -50,6 +55,10 @@ if ( ENABLE_DEV_TINKERFORGE )
 	FILE ( GLOB Leddevice_TINKER_SOURCES "${CURRENT_SOURCE_DIR}/dev_tinker/*.h" "${CURRENT_SOURCE_DIR}/dev_tinker/*.cpp")
 endif()
 
+if ( ENABLE_DEV_MAGICLINK )
+	FILE ( GLOB Leddevice_MAGICLINK_SOURCES "${CURRENT_SOURCE_DIR}/dev_magiclink/*.h" "${CURRENT_SOURCE_DIR}/dev_magiclink/*.cpp")
+endif()
+
 if ( ENABLE_DEV_USB_HID )
 	find_package(libusb-1.0 REQUIRED)
 	include_directories(
@@ -71,10 +80,11 @@ SET( Leddevice_SOURCES
 	${LedDevice_RESOURCES}
 	${Leddevice_NETWORK_SOURCES}
 	${Leddevice_PWM_SOURCES}
-	${Leddevice_SERIAL_SOURCES}		
+	${Leddevice_SERIAL_SOURCES}
 	${Leddevice_SPI_SOURCES}
 	${Leddevice_TINKER_SOURCES}
 	${Leddevice_USB_HID_SOURCES}
+	${Leddevice_MAGICLINK_SOURCES}
 )
 
 # auto generate header file that include all available leddevice headers
@@ -127,6 +137,10 @@ endif()
 
 if(ENABLE_DEV_TINKERFORGE)
 	target_link_libraries(leddevice tinkerforge)
+endif()
+
+if(ENABLE_DEV_MAGICLINK)
+	target_link_libraries(leddevice Qt${QT_VERSION_MAJOR}::Bluetooth Qt${QT_VERSION_MAJOR}::DBus)
 endif()
 
 if(ENABLE_DEV_WS281XPWM)

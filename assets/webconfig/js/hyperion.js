@@ -204,6 +204,7 @@ async function __sendAsync (data) {
     let cmd = data.command
     let subc = data.subcommand
     let tan = data.tan;
+    let timeout = data.ledDeviceType === 'magiclink' ? 30000 : 7000;
     if (subc)
       cmd = `${cmd}-${subc}`
 
@@ -221,7 +222,7 @@ async function __sendAsync (data) {
       }
     }
     // after 7 sec we resolve false
-    setTimeout(() => { window.websocket.removeEventListener('message', func); resolve(false) }, 7000)
+    setTimeout(() => { window.websocket.removeEventListener('message', func); resolve(false) }, timeout)
     window.websocket.addEventListener('message', func)
     window.websocket.send(JSON.stringify(data) + '\n')
   })

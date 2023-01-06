@@ -38,3 +38,6 @@ NULL
 
 # Docker deploy folder
 deploy/*
+
+.idea
+cmake-build-*

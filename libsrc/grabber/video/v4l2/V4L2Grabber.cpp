@@ -190,8 +190,15 @@ bool V4L2Grabber::init()
 		{
 			if (opened)
 			{
-				uninit_device();
-				close_device();
+				try
+				{
+					uninit_device();
+					close_device();
+				}
+				catch (std::exception)
+				{
+					// do nothing
+				}
 			}
 
 			Error(_log, "V4l2 init failed (%s)", e.what());
@@ -1406,7 +1413,7 @@ void V4L2Grabber::enumVideoCaptureDevices()
 
 			if (fd < 0)
 			{
-				throw_errno_exception("Cannot open '" + devName + "'");
+				log_errno_exception("Cannot open '" + devName + "'");
 				continue;
 			}
 
@@ -1415,7 +1422,7 @@ void V4L2Grabber::enumVideoCaptureDevices()
 
 			if (xioctl(fd, VIDIOC_QUERYCAP, &cap) < 0)
 			{
-				throw_errno_exception("'" + devName + "' is no V4L2 device");
+				log_errno_exception("'" + devName + "' is no V4L2 device");
 				close(fd);
 				continue;
 			}

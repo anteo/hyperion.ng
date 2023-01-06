@@ -127,9 +127,16 @@ private:
 	void throw_exception(const QString & error)
 	{
 		Error(_log, "Throws error: %s", QSTRING_CSTR(error));
+		throw std::invalid_argument(error.toStdString());
 	}
 
 	void throw_errno_exception(const QString & error)
+	{
+		Error(_log, "Throws error nr: %s", QSTRING_CSTR(QString(error + " error code " + QString::number(errno) + ", " + strerror(errno))));
+		throw std::invalid_argument(error.toStdString());
+	}
+
+	void log_errno_exception(const QString & error)
 	{
 		Error(_log, "Throws error nr: %s", QSTRING_CSTR(QString(error + " error code " + QString::number(errno) + ", " + strerror(errno))));
 	}

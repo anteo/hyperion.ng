@@ -311,6 +311,7 @@ if(ENABLE_DEV_NETWORK)
 				GIT_TAG               "v3.1.0" # Bump versions manually if necessary, do not rely on origin/master to be stable
 				BUILD_ALWAYS          OFF
 				GIT_PROGRESS          1
+				GIT_SHALLOW           ON
 				DOWNLOAD_DIR          "${MBEDTLS_DOWNLOAD_DIR}"
 				SOURCE_DIR            "${MBEDTLS_SOURCE_DIR}"
 				BINARY_DIR            "${MBEDTLS_BINARY_DIR}"

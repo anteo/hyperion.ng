@@ -66,6 +66,13 @@
 				"enum_titles" : ["edt_conf_enum_bbdefault", "edt_conf_enum_bbclassic", "edt_conf_enum_bbosd", "edt_conf_enum_bbletterbox"]
 			},
 			"propertyOrder" : 7
+		},
+		"useKeystoneCorrection" :
+		{
+			"type" : "boolean",
+			"title" : "edt_conf_bb_useKeystoneCorrection_title",
+			"default" : false,
+			"propertyOrder" : 8
 		}
 	},
 	"additionalProperties" : false

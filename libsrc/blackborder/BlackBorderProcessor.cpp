@@ -26,16 +26,17 @@ BlackBorderProcessor::BlackBorderProcessor(Hyperion* hyperion, QObject* parent)
 	, _hardDisabled(false)
 	, _userEnabled(false)
 {
+	_detector = new BlackBorderDetector(_oldThreshold);
+
 	// init
 	handleSettingsUpdate(settings::BLACKBORDER, _hyperion->getSetting(settings::BLACKBORDER));
+	handleSettingsUpdate(settings::LEDCONFIG, _hyperion->getSetting(settings::LEDCONFIG));
 
 	// listen for settings updates
 	connect(_hyperion, &Hyperion::settingsChanged, this, &BlackBorderProcessor::handleSettingsUpdate);
 
 	// listen for component state changes
 	connect(_hyperion, &Hyperion::compStateChangeRequest, this, &BlackBorderProcessor::handleCompStateChangeRequest);
-
-	_detector = new BlackBorderDetector(_oldThreshold);
 }
 
 BlackBorderProcessor::~BlackBorderProcessor()
@@ -66,17 +67,35 @@ void BlackBorderProcessor::handleSettingsUpdate(settings::type type, const QJson
 			if (fabs(_oldThreshold - newThreshold) > std::numeric_limits<double>::epsilon())
 			{
 				_oldThreshold = newThreshold;
-
+				KeystoneCorrectionArea oldArea = _detector->keystoneArea;
 				delete _detector;
 
 				_detector = new BlackBorderDetector(newThreshold);
+				_detector->keystoneArea = oldArea;
 			}
+			_detector->useKeystoneCorrection = obj["useKeystoneCorrection"].toBool(false);
 
 			Debug(Logger::getInstance("BLACKBORDER", "I"+QString::number(_hyperion->getInstanceIndex())), "Set mode to: %s", QSTRING_CSTR(_detectionMode));
 
 			// eval the comp state
 			handleCompStateChangeRequest(hyperion::COMP_BLACKBORDER, obj["enable"].toBool(true));
 		}
+	}
+	if(type == settings::LEDCONFIG && _hyperion->isComponentEnabled(COMP_BLACKBORDER) >= 0)
+	{
+		const QJsonObject& obj = config.object();
+		const QJsonObject& classic = obj["classic"].toObject();
+
+		_detector->keystoneArea = KeystoneCorrectionArea{
+			(unsigned) classic["ptlh"].toInt(0),
+			(unsigned) classic["ptlv"].toInt(0),
+			(unsigned) classic["ptrh"].toInt(100),
+			(unsigned) classic["ptrv"].toInt(0),
+			(unsigned) classic["pblh"].toInt(0),
+			(unsigned) classic["pblv"].toInt(100),
+			(unsigned) classic["pbrh"].toInt(100),
+			(unsigned) classic["pbrv"].toInt(100)
+		};
 	}
 }
 

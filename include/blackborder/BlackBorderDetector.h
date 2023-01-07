@@ -37,6 +37,10 @@ namespace hyperion
 		}
 	};
 
+	struct KeystoneCorrectionArea {
+		unsigned ptlh, ptlv, ptrh, ptrv, pblh, pblv, pbrh, pbrv;
+	};
+
 	///
 	/// The BlackBorderDetector performs detection of black-borders on a single image.
 	/// The detector will search for the upper left corner of the picture in the frame.
@@ -45,6 +49,12 @@ namespace hyperion
 	class BlackBorderDetector
 	{
 	public:
+		/// Use keystone correction
+		bool useKeystoneCorrection;
+
+		/// Keystone correction area points
+		KeystoneCorrectionArea keystoneArea;
+
 		///
 		/// Constructs a black-border detector
 		/// @param[in] threshold The threshold which the black-border detector should use
@@ -64,8 +74,10 @@ namespace hyperion
 		///
 		/// default detection mode (3lines 4side detection)
 		template <typename Pixel_T>
-		BlackBorder process(const Image<Pixel_T> & image) const
+		BlackBorder process(const Image<Pixel_T> & image)
 		{
+			prepare(image);
+
 			// test centre and 33%, 66% of width/height
 			// 33 and 66 will check left and top
 			// centre will check right and bottom sides
@@ -88,9 +100,9 @@ namespace hyperion
 			// find first X pixel of the image
 			for (int x = 0; x < width33percent; ++x)
 			{
-				if (!isBlack(image((width - x), yCenter))
-					|| !isBlack(image(x, height33percent))
-				 	|| !isBlack(image(x, height66percent)))
+				if (!isBlack(pixel(image, (width - x), yCenter))
+					|| !isBlack(pixel(image, x, height33percent))
+				 	|| !isBlack(pixel(image, x, height66percent)))
 				{
 					firstNonBlackXPixelIndex = x;
 					break;
@@ -100,9 +112,9 @@ namespace hyperion
 			// find first Y pixel of the image
 			for (int y = 0; y < height33percent; ++y)
 			{
-				if (!isBlack(image(xCenter, (height - y)))
-					|| !isBlack(image(width33percent, y))
-					|| !isBlack(image(width66percent, y)))
+				if (!isBlack(pixel(image, xCenter, (height - y)))
+					|| !isBlack(pixel(image, width33percent, y))
+					|| !isBlack(pixel(image, width66percent, y)))
 				{
 					firstNonBlackYPixelIndex = y;
 					break;
@@ -121,8 +133,10 @@ namespace hyperion
 		///
 		/// classic detection mode (topleft single line mode)
 		template <typename Pixel_T>
-		BlackBorder process_classic(const Image<Pixel_T> & image) const
+		BlackBorder process_classic(const Image<Pixel_T> & image)
 		{
+			prepare(image);
+
 			// only test the topleft third of the image
 			int width = image.width() /3;
 			int height = image.height() / 3;
@@ -137,7 +151,7 @@ namespace hyperion
 				int x = qMin(i, width);
 				int y = qMin(i, height);
 
-				const Pixel_T & color = image(x, y);
+				const Pixel_T & color = pixel(image, x, y);
 				if (!isBlack(color))
 				{
 					firstNonBlackXPixelIndex = x;
@@ -149,7 +163,7 @@ namespace hyperion
 			// expand image to the left
 			for(; firstNonBlackXPixelIndex > 0; --firstNonBlackXPixelIndex)
 			{
-				const Pixel_T & color = image(firstNonBlackXPixelIndex-1, firstNonBlackYPixelIndex);
+				const Pixel_T & color = pixel(image, firstNonBlackXPixelIndex-1, firstNonBlackYPixelIndex);
 				if (isBlack(color))
 				{
 					break;
@@ -159,7 +173,7 @@ namespace hyperion
 			// expand image to the top
 			for(; firstNonBlackYPixelIndex > 0; --firstNonBlackYPixelIndex)
 			{
-				const Pixel_T & color = image(firstNonBlackXPixelIndex, firstNonBlackYPixelIndex-1);
+				const Pixel_T & color = pixel(image, firstNonBlackXPixelIndex, firstNonBlackYPixelIndex-1);
 				if (isBlack(color))
 				{
 					break;
@@ -178,8 +192,10 @@ namespace hyperion
 		///
 		/// osd detection mode (find x then y at detected x to avoid changes by osd overlays)
 		template <typename Pixel_T>
-		BlackBorder process_osd(const Image<Pixel_T> & image) const
+		BlackBorder process_osd(const Image<Pixel_T> & image)
 		{
+			prepare(image);
+
 			// find X position at height33 and height66 we check from the left side, Ycenter will check from right side
 			// then we try to find a pixel at this X position from top and bottom and right side from top
 			int width = image.width();
@@ -200,9 +216,9 @@ namespace hyperion
 			int x;
 			for (x = 0; x < width33percent; ++x)
 			{
-				if (!isBlack(image((width - x), yCenter))
-					|| !isBlack(image(x, height33percent))
-					|| !isBlack(image(x, height66percent)))
+				if (!isBlack(pixel(image, (width - x), yCenter))
+					|| !isBlack(pixel(image, x, height33percent))
+					|| !isBlack(pixel(image, x, height66percent)))
 				{
 					firstNonBlackXPixelIndex = x;
 					break;
@@ -213,10 +229,10 @@ namespace hyperion
 			for (int y = 0; y < height33percent; ++y)
 			{
 				// left side top + left side bottom + right side top  +  right side bottom
-				if (!isBlack(image(x, y))
-					|| !isBlack(image(x, (height - y)))
-					|| !isBlack(image((width - x), y))
-					|| !isBlack(image((width - x), (height - y))))
+				if (!isBlack(pixel(image, x, y))
+					|| !isBlack(pixel(image, x, (height - y)))
+					|| !isBlack(pixel(image, (width - x), y))
+					|| !isBlack(pixel(image, (width - x), (height - y))))
 				{
 					firstNonBlackYPixelIndex = y;
 					break;
@@ -235,8 +251,10 @@ namespace hyperion
 		///
 		/// letterbox detection mode (5lines top-bottom only detection)
 		template <typename Pixel_T>
-		BlackBorder process_letterbox(const Image<Pixel_T> & image) const
+		BlackBorder process_letterbox(const Image<Pixel_T> & image)
 		{
+			prepare(image);
+
 			// test center and 25%, 75% of width
 			// 25 and 75 will check both top and bottom
 			// center will only check top (minimise false detection of captions)
@@ -255,11 +273,11 @@ namespace hyperion
 			// find first Y pixel of the image
 			for (int y = 0; y < height33percent; ++y)
 			{
-				if (!isBlack(image(xCenter, y))
-					|| !isBlack(image(width25percent, y))
-					|| !isBlack(image(width75percent, y))
-					|| !isBlack(image(width25percent, (height - y)))
-					|| !isBlack(image(width75percent, (height - y))))
+				if (!isBlack(pixel(image, xCenter, y))
+					|| !isBlack(pixel(image, width25percent, y))
+					|| !isBlack(pixel(image, width75percent, y))
+					|| !isBlack(pixel(image, width25percent, (height - y)))
+					|| !isBlack(pixel(image, width75percent, (height - y))))
 				{
 					firstNonBlackYPixelIndex = y;
 					break;
@@ -292,9 +310,45 @@ namespace hyperion
 			return color.red < _blackborderThreshold && color.green < _blackborderThreshold && color.blue < _blackborderThreshold;
 		}
 
+		template <typename Pixel_T>
+		const Pixel_T& prepare(const Image<Pixel_T>& image)
+		{
+			_width = image.width();
+			_height = image.height();
+
+			_area.ptlh = keystoneArea.ptlh * _width / 100;
+			_area.ptlv = keystoneArea.ptlv * _height / 100;
+			_area.ptrh = keystoneArea.ptrh * _width / 100;
+			_area.ptrv = keystoneArea.ptrv * _height / 100;
+			_area.pblh = keystoneArea.pblh * _width / 100;
+			_area.pblv = keystoneArea.pblv * _height / 100;
+			_area.pbrh = keystoneArea.pbrh * _width / 100;
+			_area.pbrv = keystoneArea.pbrv * _height / 100;
+		}
+
+		template <typename Pixel_T>
+		const Pixel_T& pixel(const Image<Pixel_T>& image, unsigned x, unsigned y) const
+		{
+			if (useKeystoneCorrection)
+			{
+				unsigned tx = _area.ptlh + ((long) _area.ptrh - (long) _area.ptlh) * (long) x / (long) _width;
+				unsigned ty = _area.ptlv + ((long) _area.ptrv - (long) _area.ptlv) * (long) x / (long) _width;
+				unsigned bx = _area.pblh + ((long) _area.pbrh - (long) _area.pblh) * (long) x / (long) _width;
+				unsigned by = _area.pblv + ((long) _area.pbrv - (long) _area.pblv) * (long) x / (long) _width;
+				unsigned cx = tx + ((long) bx - (long) tx) * (long) y / (long) _height;
+				unsigned cy = ty + ((long) by - (long) ty) * (long) y / (long) _height;
+				return image(cx, cy);
+			}
+			else
+			{
+				return image(x, y);
+			}
+		}
+
 	private:
 		/// Threshold for the black-border detector [0 .. 255]
 		const uint8_t _blackborderThreshold;
-
+		unsigned _width, _height;
+		KeystoneCorrectionArea _area;
 	};
 } // end namespace hyperion

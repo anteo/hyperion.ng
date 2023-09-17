@@ -251,6 +251,14 @@ body {
   --height-var: 0px;
 }
 
+@media (max-width: 540px) {
+    #ledsim_dialog {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+}
+
 #leds_canvas {
   position:absolute;
   margin:15px;

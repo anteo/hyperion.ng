@@ -18,6 +18,23 @@
 
 ![Screenshot](doc/screenshot.png)
 
+### About this fork
+
+This fork adds MagicLink LED device support to Hyperion (from [ambivision.tv](https://ambivision.tv/contact/))
+
+It also includes a number of improvements to V4L2 grabber to provide a configuration for the following hardware camera controls:
+
+* Exposure
+* Gain
+* Red gain
+* Green gain
+* Blue gain
+* Automatic exposure bias
+* Manual exposure
+* Automatic gain
+* Automatic white balance
+* Power line frequency
+
 ### Features:
 
 * Low CPU load makes it perfect for SoCs like Raspberry Pi

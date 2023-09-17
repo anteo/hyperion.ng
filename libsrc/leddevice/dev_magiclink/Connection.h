@@ -57,7 +57,7 @@ private slots:
 signals:
 	void connected(const QBluetoothAddress& address);
 	void connectionError(const QString& message);
-	void socketError(const QString& message);
+	void socketError(const QString& message, bool isRecoverable);
 	void ready();
 	void packetSent();
 

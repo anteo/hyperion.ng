@@ -289,7 +289,7 @@ void Connection::onSocketError()
 	if (++_socketErrorsCount >= _maxErrors)
 	{
 		finish();
-		emit socketError(_socket->errorString());
+		emit socketError(_socket->errorString(), true);
 	}
 	else
 	{

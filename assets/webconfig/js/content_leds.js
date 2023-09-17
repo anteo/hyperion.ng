@@ -2094,13 +2094,13 @@ var updateOutputSelectList = function (ledType, discoveryInfo) {
 
     if (discoveryInfo.devices.length == 0) {
       enumVals.push("NONE");
-      enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+      enumTitleVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
       $('#btn_submit_controller').prop('disabled', true);
       showAllDeviceInputOptions(key, false);
     } else {
       for (const device of discoveryInfo.devices) {
         enumVals.push(device.address);
-        enumTitelVals.push(device.name + " (" + device.address + ", RSSI: " + device.rssi + ")");
+        enumTitleVals.push(device.name + " (" + device.address + ", RSSI: " + device.rssi + ")");
       }
       addCustom = true;
       var configuredDeviceType = window.serverConfig.device.type;

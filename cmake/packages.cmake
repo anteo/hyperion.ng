@@ -72,7 +72,7 @@ endif()
 # .deb files for apt
 # https://cmake.org/cmake/help/latest/cpack_gen/deb.html
 SET ( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_SOURCE_DIR}/cmake/package-scripts/preinst;${CMAKE_SOURCE_DIR}/cmake/package-scripts/postinst;${CMAKE_SOURCE_DIR}/cmake/package-scripts/prerm" )
-SET ( CPACK_DEBIAN_PACKAGE_DEPENDS "libcec6 | libcec4" )
+SET ( CPACK_DEBIAN_PACKAGE_DEPENDS "libcec6 | libcec4 | libcec (>= 4.0)" )
 SET ( CPACK_DEBIAN_PACKAGE_SECTION "Miscellaneous" )
 
 # .rpm for rpm
@@ -154,6 +154,9 @@ if(ENABLE_FLATBUF_CONNECT)
 	endif()
 	if(ENABLE_V4L2)
 		SET ( CPACK_COMPONENTS_ALL ${CPACK_COMPONENTS_ALL} "hyperion_v4l2" )
+	endif()
+	if(ENABLE_AUDIO)
+		SET ( CPACK_COMPONENTS_ALL ${CPACK_COMPONENTS_ALL} "hyperion_audio" )
 	endif()
 	if(ENABLE_X11)
 		SET ( CPACK_COMPONENTS_ALL ${CPACK_COMPONENTS_ALL} "hyperion_x11" )

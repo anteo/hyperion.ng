@@ -31,7 +31,7 @@ if (APPLE)
 endif(APPLE)
 
 if (UNIX)
-	find_package(Qt${QT_VERSION_MAJOR} COMPONENTS DBus REQUIRED )
+	find_package(Qt${QT_VERSION_MAJOR} COMPONENTS DBus QUIET )
 	if (Qt${QT_VERSION_MAJOR}DBus_FOUND)
 		set(hyperiond_POWER_MNG_DBUS "Qt${QT_VERSION_MAJOR}::DBus")
 	endif()
@@ -118,6 +118,10 @@ if (ENABLE_MF)
 	target_link_libraries(${PROJECT_NAME} mf-grabber)
 endif (ENABLE_MF)
 
+if (ENABLE_AUDIO)
+	target_link_libraries(hyperiond audio-grabber)
+endif()
+
 if (ENABLE_AMLOGIC)
 	target_link_libraries(${PROJECT_NAME} amlogic-grabber)
 endif (ENABLE_AMLOGIC)
@@ -156,7 +160,7 @@ if (APPLE)
 		MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/cmake/osxbundle/Info.plist.in
 		MACOSX_BUNDLE_BUNDLE_NAME "Hyperion"
 		MACOSX_BUNDLE_BUNDLE_VERSION ${HYPERION_VERSION}
-		MACOSX_BUNDLE_COPYRIGHT "Copyright(c) 2014-2022 Hyperion Project"
+		MACOSX_BUNDLE_COPYRIGHT "Copyright(c) 2014-2023 Hyperion Project"
 		MACOSX_BUNDLE_GUI_IDENTIFIER "com.hyperion-project.${PROJECT_NAME}"
 		MACOSX_BUNDLE_ICON_FILE "Hyperion.icns"
 		MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${HYPERION_VERSION}"

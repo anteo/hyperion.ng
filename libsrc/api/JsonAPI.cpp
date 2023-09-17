@@ -21,10 +21,24 @@
 #include <hyperion/GrabberWrapper.h>
 #include <grabber/QtGrabber.h>
 
+#include <utils/WeakConnect.h>
+
 #if defined(ENABLE_MF)
 	#include <grabber/MFGrabber.h>
 #elif defined(ENABLE_V4L2)
 	#include <grabber/V4L2Grabber.h>
+#endif
+
+#if defined(ENABLE_AUDIO)
+	#include <grabber/AudioGrabber.h>
+
+	#ifdef WIN32
+		#include <grabber/AudioGrabberWindows.h>
+	#endif
+
+	#ifdef __linux__
+		#include <grabber/AudioGrabberLinux.h>
+	#endif
 #endif
 
 #if defined(ENABLE_X11)
@@ -552,6 +566,7 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	info["ledDevices"] = ledDevices;
 
 	QJsonObject grabbers;
+	// SCREEN
 	QJsonObject screenGrabbers;
 	if (GrabberWrapper::getInstance() != nullptr)
 	{
@@ -571,6 +586,7 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	}
 	screenGrabbers["available"] = availableScreenGrabbers;
 
+	// VIDEO
 	QJsonObject videoGrabbers;
 	if (GrabberWrapper::getInstance() != nullptr)
 	{
@@ -590,8 +606,31 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	}
 	videoGrabbers["available"] = availableVideoGrabbers;
 
+	// AUDIO
+	QJsonObject audioGrabbers;
+	if (GrabberWrapper::getInstance() != nullptr)
+	{
+		QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex(), GrabberTypeFilter::AUDIO);
+
+		QJsonArray activeGrabberNames;
+		for (auto grabberName : activeGrabbers)
+		{
+			activeGrabberNames.append(grabberName);
+		}
+
+		audioGrabbers["active"] = activeGrabberNames;
+	}
+	QJsonArray availableAudioGrabbers;
+	for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::AUDIO))
+	{
+		availableAudioGrabbers.append(grabber);
+	}
+	audioGrabbers["available"] = availableAudioGrabbers;
+
 	grabbers.insert("screen", screenGrabbers);
 	grabbers.insert("video", videoGrabbers);
+	grabbers.insert("audio", audioGrabbers);
+
 	info["grabbers"] = grabbers;
 
 	info["videomode"] = QString(videoMode2String(_hyperion->getCurrentVideoMode()));
@@ -1453,7 +1492,7 @@ void JsonAPI::handleAuthorizeCommand(const QJsonObject &message, const QString &
 void JsonAPI::handleInstanceCommand(const QJsonObject &message, const QString &command, int tan)
 {
 	const QString &subc = message["subcommand"].toString();
-	const quint8 &inst = message["instance"].toInt();
+	const quint8 &inst = static_cast<quint8>(message["instance"].toInt());
 	const QString &name = message["name"].toString();
 
 	if (subc == "switchTo")
@@ -1471,7 +1510,12 @@ void JsonAPI::handleInstanceCommand(const QJsonObject &message, const QString &c
 
 	if (subc == "startInstance")
 	{
-		connect(this, &API::onStartInstanceResponse, [=] (const int &tan) { sendSuccessReply(command + "-" + subc, tan); });
+		//Only send update once
+		weakConnect(this, &API::onStartInstanceResponse, [this, command, subc] (int tan)
+		{
+			sendSuccessReply(command + "-" + subc, tan);
+		});
+
 		if (!API::startInstance(inst, tan))
 			sendErrorReply("Can't start Hyperion instance index " + QString::number(inst), command + "-" + subc, tan);
 
@@ -1600,6 +1644,7 @@ void JsonAPI::handleInputSourceCommand(const QJsonObject& message, const QString
 			QJsonObject inputSourcesDiscovered;
 			inputSourcesDiscovered.insert("sourceType", sourceType);
 			QJsonArray videoInputs;
+			QJsonArray audioInputs;
 
 #if defined(ENABLE_V4L2) || defined(ENABLE_MF)
 
@@ -1612,6 +1657,24 @@ void JsonAPI::handleInputSourceCommand(const QJsonObject& message, const QString
 #endif
 				QJsonObject params;
 				videoInputs = grabber->discover(params);
+				delete grabber;
+			}
+			else
+#endif
+
+#if defined(ENABLE_AUDIO)
+			if (sourceType == "audio")
+			{
+				AudioGrabber* grabber;
+#ifdef WIN32
+				grabber = new AudioGrabberWindows();
+#endif
+
+#ifdef __linux__
+				grabber = new AudioGrabberLinux();
+#endif
+				QJsonObject params;
+				audioInputs = grabber->discover(params);
 				delete grabber;
 			}
 			else
@@ -1712,6 +1775,7 @@ void JsonAPI::handleInputSourceCommand(const QJsonObject& message, const QString
 
 			}
 			inputSourcesDiscovered["video_sources"] = videoInputs;
+			inputSourcesDiscovered["audio_sources"] = audioInputs;
 
 			DebugIf(verbose, _log, "response: [%s]", QString(QJsonDocument(inputSourcesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
@@ -1825,6 +1889,7 @@ void JsonAPI::sendSuccessReply(const QString &command, int tan)
 {
 	// create reply
 	QJsonObject reply;
+	reply["instance"] = _hyperion->getInstanceIndex();
 	reply["success"] = true;
 	reply["command"] = command;
 	reply["tan"] = tan;
@@ -1836,6 +1901,7 @@ void JsonAPI::sendSuccessReply(const QString &command, int tan)
 void JsonAPI::sendSuccessDataReply(const QJsonDocument &doc, const QString &command, int tan)
 {
 	QJsonObject reply;
+	reply["instance"] = _hyperion->getInstanceIndex();
 	reply["success"] = true;
 	reply["command"] = command;
 	reply["tan"] = tan;
@@ -1851,6 +1917,7 @@ void JsonAPI::sendErrorReply(const QString &error, const QString &command, int t
 {
 	// create reply
 	QJsonObject reply;
+	reply["instance"] = _hyperion->getInstanceIndex();
 	reply["success"] = false;
 	reply["error"] = error;
 	reply["command"] = command;

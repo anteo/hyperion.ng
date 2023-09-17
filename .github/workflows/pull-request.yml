@@ -18,23 +18,23 @@ jobs:
         dockerImage: [ x86_64, armv6l, armv7l, aarch64 ]
         include:
           - dockerImage: x86_64
-            dockerName: Debian Stretch (x86_64)
+            dockerName: Debian Buster (x86_64)
             platform: x11
           - dockerImage: armv6l
-            dockerName: Debian Stretch (Raspberry Pi v1 & ZERO)
+            dockerName: Debian Buster (Raspberry Pi v1 & ZERO)
             platform: rpi
           - dockerImage: armv7l
-            dockerName: Debian Stretch (Raspberry Pi 2 & 3)
+            dockerName: Debian Buster (Raspberry Pi 2 & 3)
             platform: rpi
           - dockerImage: aarch64
-            dockerName: Debian Stretch (Generic AARCH64)
+            dockerName: Debian Buster (Generic AARCH64)
             platform: amlogic
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
 
       # Append PR number to .version
       - name: Append PR number to version
@@ -47,7 +47,7 @@ jobs:
       - name: Build packages
         env:
           DOCKER_IMAGE: ${{ matrix.dockerImage }}
-          DOCKER_TAG: stretch
+          DOCKER_TAG: buster
           DOCKER_NAME: ${{ matrix.dockerName }}
           PLATFORM: ${{ matrix.platform }}
         shell: bash
@@ -78,7 +78,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
 
       # Append PR number to .version
       - name: Append PR number to version
@@ -127,7 +127,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
 
       # Append PR number to .version
       - name: Append PR number to version
@@ -150,7 +150,7 @@ jobs:
         with:
           path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
           key: ${{ runner.os }}-chocolatey
-        
+
 #      - name: Install Python
 #        shell: powershell
 #        run: |
@@ -159,7 +159,8 @@ jobs:
       - name: Install OpenSSL, DirectX SDK
         shell: powershell
         run: |
-          choco install --no-progress openssl directx-sdk -y          
+          choco install --no-progress openssl --version=1.1.1.2100 -y
+          choco install --no-progress directx-sdk -y
 
       - name: Install libjpeg-turbo
         run: |

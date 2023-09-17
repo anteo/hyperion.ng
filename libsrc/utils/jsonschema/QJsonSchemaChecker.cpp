@@ -1,4 +1,5 @@
 // stdlib includes
+#include <limits>
 #include <iterator>
 #include <algorithm>
 #include <cmath>
@@ -64,7 +65,7 @@ QJsonObject QJsonSchemaChecker::getAutoCorrectedConfig(const QJsonObject& value,
 	_messages.clear();
 	_autoCorrected = value;
 
-	for (const QString& correct : sequence)
+	for (const QString& correct : qAsConst(sequence))
 	{
 		_correct = correct;
 		_currentPath.clear();
@@ -162,7 +163,8 @@ void QJsonSchemaChecker::validate(const QJsonValue& value, const QJsonObject& sc
 			; // references have already been collected
 		else if (attribute == "title" || attribute == "description" || attribute == "default" || attribute == "format"
 			|| attribute == "defaultProperties" || attribute == "propertyOrder" || attribute == "append" || attribute == "step"
-			|| attribute == "access" || attribute == "options" || attribute == "script" || attribute == "allowEmptyArray" || attribute == "comment")
+			|| attribute == "access" || attribute == "options" || attribute == "script" || attribute == "allowEmptyArray" || attribute == "comment"
+			|| attribute == "watch" || attribute == "template")
 			; // nothing to do.
 		else
 		{
@@ -234,7 +236,6 @@ void QJsonSchemaChecker::checkProperties(const QJsonObject& value, const QJsonOb
 		const QJsonValue& propertyValue = *i;
 
 		_currentPath.append("." + property);
-		QJsonObject::const_iterator required = propertyValue.toObject().find("required");
 
 		if (value.contains(property))
 		{
@@ -242,7 +243,8 @@ void QJsonSchemaChecker::checkProperties(const QJsonObject& value, const QJsonOb
 		}
 		else if (!verifyDeps(property, value, schema))
 		{
-			if (required != propertyValue.toObject().end() && propertyValue.toObject().find("required").value().toBool() && !_ignoreRequired)
+			bool isRequired = propertyValue.toObject().value("required").toBool(false);
+			if (isRequired && !_ignoreRequired)
 			{
 				_error = true;
 
@@ -273,9 +275,10 @@ bool QJsonSchemaChecker::verifyDeps(const QString& property, const QJsonObject& 
 	{
 		const QJsonObject& depends = ((schema[property].toObject())["options"].toObject())["dependencies"].toObject();
 
-		if (depends.keys().size() > 0)
+		const QStringList dependsKeys = depends.keys();
+		if (!dependsKeys.isEmpty())
 		{
-			QString firstName = depends.keys().first();
+			const QString firstName = dependsKeys.constFirst();
 			if (value.contains(firstName))
 			{
 				if (value[firstName] != depends[firstName])

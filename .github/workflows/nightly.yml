@@ -86,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Generate environment variables
         run: |
@@ -138,7 +138,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v5.2.0
+        uses: crazy-max/ghaction-import-gpg@v5.3.0
         with:
           gpg_private_key: ${{ secrets.APT_GPG }}
 
@@ -158,7 +158,7 @@ jobs:
           reprepro -Vb nightly export
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3.0.1
+        uses: actions/download-artifact@v3.0.2
 
       - name: Include artifacts into the package source
         run: |
@@ -171,7 +171,7 @@ jobs:
           done
 
       - name: Upload packages to nightly server
-        uses: SamKirkland/FTP-Deploy-Action@4.3.2
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: nightly.apt.hyperion-project.org
           username: ${{ secrets.NIGHTLY_USER }}

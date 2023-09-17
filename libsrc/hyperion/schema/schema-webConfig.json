@@ -13,10 +13,10 @@
 		"port" :
 		{
 			"type" : "integer",
-			"title" : "edt_conf_general_port_title",
+			"title" : "edt_conf_webc_port_title",
 			"minimum" : 80,
 			"maximum" : 65535,
-			"default" : 8090.3,
+			"default" : 8090,
 			"propertyOrder" : 3
 		},
 		"sslPort" :

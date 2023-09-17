@@ -1002,6 +1002,21 @@ $(document).ready(function () {
 
   addJsonEditorHostValidation();
 
+  JSONEditor.defaults.custom_validators.push(function (schema, value, path) {
+    var errors = [];
+
+    if (path === "root.specificOptions.segments.segmentList") {
+      var overlapSegNames = validateWledSegmentConfig(value);
+      if (overlapSegNames.length > 0) {
+        errors.push({
+          path: "root.specificOptions.segments",
+          message: $.i18n('edt_dev_spec_segmentsOverlapValidation_error', overlapSegNames.length, overlapSegNames.join(', '))
+        });
+      }
+    }
+    return errors;
+  });
+
   $("#leddevices").off().on("change", function () {
     var generalOptions = window.serverSchema.properties.device;
 
@@ -1089,6 +1104,7 @@ $(document).ready(function () {
           }
         case "cololight":
         case "wled":
+        case "cololight":
         case "nanoleaf":
           showAllDeviceInputOptions("hostList", false);
         case "apa102":
@@ -1114,7 +1130,22 @@ $(document).ready(function () {
           if (storedAccess === 'expert') {
             filter.discoverAll = true;
           }
-          discover_device(ledType, filter);
+
+          $('#btn_submit_controller').prop('disabled', true);
+
+          discover_device(ledType, filter)
+            .then(discoveryResult => {
+              updateOutputSelectList(ledType, discoveryResult);
+            })
+            .then(discoveryResult => {
+              if (ledType === "wled") {
+                updateElementsWled(ledType);
+              }
+            })
+            .catch(error => {
+              showNotification('danger', "Device discovery for " + ledType + " failed with error:" + error);
+            });
+
           hwLedCountDefault = 1;
           colorOrderDefault = "rgb";
           break;
@@ -1219,8 +1250,8 @@ $(document).ready(function () {
           break;
 
         case "magiclink":
-        case "cololight":
         case "wled":
+        case "cololight":
           var hostList = conf_editor.getEditor("root.specificOptions.hostList").getValue();
           if (hostList !== "SELECT") {
             var host = conf_editor.getEditor("root.specificOptions.host").getValue();
@@ -1348,7 +1379,9 @@ $(document).ready(function () {
             break;
 
           case "wled":
-            params = { host: host, filter: "info" };
+            //Ensure that elements are defaulted for new host
+            updateElementsWled(ledType, host);
+            params = { host: host };
             getProperties_device(ledType, host, params);
             break;
 
@@ -1461,6 +1494,10 @@ $(document).ready(function () {
           }
           conf_editor.getEditor("root.specificOptions.rateList").setValue(rate);
           break;
+        case "wled":
+          var hardwareLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount").getValue();
+          validateWledLedCount(hardwareLedCount);
+          break;
         default:
       }
     });
@@ -1556,12 +1593,54 @@ $(document).ready(function () {
       }
     });
 
+    //WLED
+    conf_editor.watch('root.specificOptions.segments.segmentList', () => {
+
+      //Update hidden streamSegmentId element
+      var selectedSegment = conf_editor.getEditor("root.specificOptions.segments.segmentList").getValue();
+      var streamSegmentId = parseInt(selectedSegment);
+      conf_editor.getEditor("root.specificOptions.segments.streamSegmentId").setValue(streamSegmentId);
+
+      if (devicesProperties[ledType]) {
+        var host = conf_editor.getEditor("root.specificOptions.host").getValue();
+        var ledDeviceProperties = devicesProperties[ledType][host];
+
+        if (ledDeviceProperties) {
+          var hardwareLedCount = 1;
+          if (streamSegmentId > -1) {
+            // Set hardware LED count to segment length
+            if (ledDeviceProperties.state) {
+              var segments = ledDeviceProperties.state.seg;
+              var segmentConfig = segments.filter(seg => seg.id == streamSegmentId)[0];
+              hardwareLedCount = segmentConfig.len;
+            }
+          } else {
+            //"Use main segment only" is disabled, i.e. stream to all LEDs
+            if (ledDeviceProperties.info) {
+              hardwareLedCount = ledDeviceProperties.info.leds.count;
+            }
+          }
+          conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
+        }
+      }
+    });
+
     //Handle Hardware Led Count constraint list
     conf_editor.watch('root.generalOptions.hardwareLedCountList', () => {
       var hwLedCountSelected = conf_editor.getEditor("root.generalOptions.hardwareLedCountList").getValue();
       conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(Number(hwLedCountSelected));
     });
 
+    //Handle Hardware Led update and constraints
+    conf_editor.watch('root.generalOptions.hardwareLedCount', () => {
+      var hardwareLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount").getValue();
+      switch (ledType) {
+        case "wled":
+          validateWledLedCount(hardwareLedCount);
+          break;
+        default:
+      }
+    });
   });
 
   //philipshueentertainment backward fix
@@ -1805,8 +1884,8 @@ function saveLedConfig(genDefLayout = false) {
   location.reload();
 }
 
-// build dynamic enum
-var updateSelectList = function (ledType, discoveryInfo) {
+// build dynamic enum for hosts or output paths
+var updateOutputSelectList = function (ledType, discoveryInfo) {
   // Only update, if ledType is equal of selected controller type and discovery info exists
   if (ledType !== $("#leddevices").val() || !discoveryInfo.devices) {
     return;
@@ -1817,7 +1896,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
 
   var key;
   var enumVals = [];
-  var enumTitelVals = [];
+  var enumTitleVals = [];
   var enumDefaultVal = "";
   var addSelect = false;
   var addCustom = false;
@@ -1842,7 +1921,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
 
       if (discoveryInfo.devices.length === 0) {
         enumVals.push("NONE");
-        enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+        enumTitleVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
       }
       else {
         var name;
@@ -1883,7 +1962,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
           }
 
           enumVals.push(host);
-          enumTitelVals.push(name);
+          enumTitleVals.push(name);
         }
 
         //Always allow to add custom configuration
@@ -1911,7 +1990,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
 
       if (discoveryInfo.devices.length == 0) {
         enumVals.push("NONE");
-        enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+        enumTitleVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
         $('#btn_submit_controller').prop('disabled', true);
         showAllDeviceInputOptions(key, false);
       }
@@ -1929,7 +2008,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
               } else {
                 enumVals.push(device.portName);
               }
-              enumTitelVals.push(device.portName + " (" + device.vendorIdentifier + "|" + device.productIdentifier + ") - " + device.manufacturer);
+              enumTitleVals.push(device.portName + " (" + device.vendorIdentifier + "|" + device.productIdentifier + ") - " + device.manufacturer);
             }
 
             // Select configured device
@@ -1958,7 +2037,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
 
       if (discoveryInfo.devices.length == 0) {
         enumVals.push("NONE");
-        enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+        enumTitleVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
         $('#btn_submit_controller').prop('disabled', true);
         showAllDeviceInputOptions(key, false);
       }
@@ -1977,7 +2056,7 @@ var updateSelectList = function (ledType, discoveryInfo) {
           case "piblaster":
             for (const device of discoveryInfo.devices) {
               enumVals.push(device.systemLocation);
-              enumTitelVals.push(device.deviceName + " (" + device.systemLocation + ")");
+              enumTitleVals.push(device.deviceName + " (" + device.systemLocation + ")");
             }
 
             // Select configured device
@@ -1998,9 +2077,9 @@ var updateSelectList = function (ledType, discoveryInfo) {
     case "devRPiPWM":
       key = ledType;
 
-      if (discoveryInfo.devices.length == 0) {
+      if (!discoveryInfo.isUserAdmin) {
         enumVals.push("NONE");
-        enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+        enumTitleVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
         $('#btn_submit_controller').prop('disabled', true);
         showAllDeviceInputOptions(key, false);
 
@@ -2042,18 +2121,19 @@ var updateSelectList = function (ledType, discoveryInfo) {
   }
 
   if (enumVals.length > 0) {
-    updateJsonEditorSelection(conf_editor, 'root.specificOptions', key, addSchemaElements, enumVals, enumTitelVals, enumDefaultVal, addSelect, addCustom);
+    updateJsonEditorSelection(conf_editor, 'root.specificOptions', key, addSchemaElements, enumVals, enumTitleVals, enumDefaultVal, addSelect, addCustom);
   }
 };
 
 async function discover_device(ledType, params) {
 
-  $('#btn_submit_controller').prop('disabled', true);
-
   const result = await requestLedDeviceDiscovery(ledType, params);
 
-  var discoveryResult;
-  if (result && !result.error) {
+  var discoveryResult = {};
+  if (result) {
+    if (result.error) {
+      throw (result.error);
+    }
     discoveryResult = result.info;
   }
   else {
@@ -2062,8 +2142,7 @@ async function discover_device(ledType, params) {
       ledDevicetype: ledType
     }
   }
-
-  updateSelectList(ledType, discoveryResult);
+  return discoveryResult;
 }
 
 async function getProperties_device(ledType, key, params) {
@@ -2140,23 +2219,7 @@ function updateElements(ledType, key) {
         conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
         break;
       case "wled":
-        var ledProperties = devicesProperties[ledType][key];
-
-        if (ledProperties && ledProperties.leds) {
-          hardwareLedCount = ledProperties.leds.count;
-          if (ledProperties.maxLedCount) {
-            var maxLedCount = ledProperties.maxLedCount;
-            if (hardwareLedCount > maxLedCount) {
-              showInfoDialog('warning', $.i18n("conf_leds_config_warning"), $.i18n('conf_leds_error_hwled_gt_maxled', hardwareLedCount, maxLedCount, maxLedCount));
-              hardwareLedCount = maxLedCount;
-              conf_editor.getEditor("root.specificOptions.streamProtocol").setValue("RAW");
-              //Workaround, as value seems to getting updated property when a 'getEditor("root.specificOptions").getValue()' is done during save
-              var editor = conf_editor.getEditor("root.specificOptions");
-              editor.value["streamProtocol"] = "RAW";
-            }
-          }
-        }
-        conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
+        updateElementsWled(ledType, key);
         break;
 
       case "nanoleaf":
@@ -2239,5 +2302,169 @@ function showAllDeviceInputOptions(showForKey, state) {
 function disableAutoResolvedGeneralOptions() {
   conf_editor.getEditor("root.generalOptions.hardwareLedCount").disable();
   conf_editor.getEditor("root.generalOptions.colorOrder").disable();
+}
+
+function validateWledSegmentConfig(streamSegmentId) {
+  var overlapSegNames = [];
+  if (streamSegmentId > -1) {
+    if (!jQuery.isEmptyObject(devicesProperties)) {
+      var host = conf_editor.getEditor("root.specificOptions.host").getValue();
+      var ledProperties = devicesProperties['wled'][host];
+      if (ledProperties && ledProperties.state) {
+        var segments = ledProperties.state.seg;
+        var segmentConfig = segments.filter(seg => seg.id == streamSegmentId)[0];
+
+        var overlappingSegments = segments.filter((seg) => {
+          if (seg.id != streamSegmentId) {
+            if ((segmentConfig.start >= seg.stop) || (segmentConfig.start < seg.start && segmentConfig.stop <= seg.start)) {
+              return false;
+            }
+            return true;
+          }
+        });
+
+        if (overlappingSegments.length > 0) {
+          var overlapSegNames = [];
+          for (const segment of overlappingSegments) {
+            if (segment.n) {
+              overlapSegNames.push(segment.n);
+            } else {
+              overlapSegNames.push("Segment " + segment.id);
+            }
+          }
+        }
+      }
+    }
+  }
+  return overlapSegNames;
+}
+
+function validateWledLedCount(hardwareLedCount) {
+
+  if (!jQuery.isEmptyObject(devicesProperties)) {
+    var host = conf_editor.getEditor("root.specificOptions.host").getValue();
+    var ledDeviceProperties = devicesProperties["wled"][host];
+
+    if (ledDeviceProperties) {
+
+      var streamProtocol = conf_editor.getEditor("root.specificOptions.streamProtocol").getValue();
+      if (streamProtocol === "RAW") {
+        var maxLedCount = 490;
+        if (ledDeviceProperties.maxLedCount) {
+          //WLED not DDP ready
+          maxLedCount = ledDeviceProperties.maxLedCount;
+          if (hardwareLedCount > maxLedCount) {
+            showInfoDialog('warning', $.i18n("conf_leds_config_warning"), $.i18n('conf_leds_error_hwled_gt_maxled', hardwareLedCount, maxLedCount, maxLedCount));
+            hardwareLedCount = maxLedCount;
+            conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
+            conf_editor.getEditor("root.specificOptions.streamProtocol").setValue("RAW");
+          }
+        } else {
+          //WLED is DDP ready
+          if (hardwareLedCount > maxLedCount) {
+            var newStreamingProtocol = "DDP";
+            showInfoDialog('warning', $.i18n("conf_leds_config_warning"), $.i18n('conf_leds_error_hwled_gt_maxled_protocol', hardwareLedCount, maxLedCount, newStreamingProtocol));
+            conf_editor.getEditor("root.specificOptions.streamProtocol").setValue(newStreamingProtocol);
+          }
+        }
+      }
+    }
+  }
+}
+
+function updateElementsWled(ledType, key) {
+
+  // Get configured device's details
+  var configuredDeviceType = window.serverConfig.device.type;
+  var configuredHost = window.serverConfig.device.host;
+  var host = conf_editor.getEditor("root.specificOptions.host").getValue();
+
+  //New segment selection list values
+  var enumSegSelectVals = [];
+  var enumSegSelectTitleVals = [];
+  var enumSegSelectDefaultVal = "";
+  var defaultSegmentId = "-1";
+
+  if (devicesProperties[ledType] && devicesProperties[ledType][key]) {
+    var ledDeviceProperties = devicesProperties[ledType][key];
+
+    if (!jQuery.isEmptyObject(ledDeviceProperties)) {
+
+      if (ledDeviceProperties.info) {
+        if (!ledDeviceProperties.info.hasOwnProperty("liveseg") || ledDeviceProperties.info.liveseg < 0) {
+          // "Use main segment only" is disabled
+          enumSegSelectVals.push(defaultSegmentId);
+          enumSegSelectTitleVals.push($.i18n('edt_dev_spec_segments_disabled_title'));
+          enumSegSelectDefaultVal = defaultSegmentId;
+
+        } else {
+          if (ledDeviceProperties.state) {
+            //Prepare new segment selection list
+            var segments = ledDeviceProperties.state.seg;
+            for (const segment of segments) {
+              enumSegSelectVals.push(segment.id.toString());
+              if (segment.n) {
+                enumSegSelectTitleVals.push(segment.n);
+              } else {
+                enumSegSelectTitleVals.push("Segment " + segment.id);
+              }
+            }
+            var currentSegmentId = conf_editor.getEditor("root.specificOptions.segments.streamSegmentId").getValue().toString();
+            enumSegSelectDefaultVal = currentSegmentId;
+          }
+        }
+
+        // Check if currently configured segment is available at WLED
+        var configuredDeviceType = window.serverConfig.device.type;
+        var configuredHost = window.serverConfig.device.host;
+
+        var host = conf_editor.getEditor("root.specificOptions.host").getValue();
+        if (configuredDeviceType == ledType && configuredHost == host) {
+          var configuredStreamSegmentId = window.serverConfig.device.segments.streamSegmentId.toString();
+          var segmentIdFound = enumSegSelectVals.filter(segId => segId == configuredStreamSegmentId).length;
+          if (!segmentIdFound) {
+            showInfoDialog('warning', $.i18n("conf_leds_config_warning"), $.i18n('conf_leds_error_wled_segment_missing', configuredStreamSegmentId));
+          }
+        }
+      }
+    }
+  } else {
+    //If failed to get properties
+    var hardwareLedCount;
+    var segmentConfig = false;
+
+    if (configuredDeviceType == ledType && configuredHost == host) {
+      // Populate elements from existing configuration
+      if (window.serverConfig.device.segments) {
+        segmentConfig = true;
+      }
+      hardwareLedCount = window.serverConfig.device.hardwareLedCount;
+    } else {
+      // Populate elements with default values
+      hardwareLedCount = 1;
+    }
+
+    if (segmentConfig && segmentConfig.streamSegmentId > defaultSegmentId) {
+      var configuredstreamSegmentId = window.serverConfig.device.segments.streamSegmentId.toString();
+      enumSegSelectVals = [configuredstreamSegmentId];
+      enumSegSelectTitleVals = ["Segment " + configuredstreamSegmentId];
+      enumSegSelectDefaultVal = configuredstreamSegmentId;
+    } else {
+      enumSegSelectVals.push(defaultSegmentId);
+      enumSegSelectTitleVals.push($.i18n('edt_dev_spec_segments_disabled_title'));
+      enumSegSelectDefaultVal = defaultSegmentId;
+    }
+    conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
+  }
+
+  updateJsonEditorSelection(conf_editor, 'root.specificOptions.segments',
+    'segmentList', {}, enumSegSelectVals, enumSegSelectTitleVals, enumSegSelectDefaultVal, false, false);
+
+  //Show additional configuration options, if more than one segment is available
+  var showAdditionalOptions = false;
+  if (enumSegSelectVals.length > 1) {
+    showAdditionalOptions = true;
+  }
+  showInputOptionForItem(conf_editor, "root.specificOptions.segments", "switchOffOtherSegments", showAdditionalOptions);
 }
 

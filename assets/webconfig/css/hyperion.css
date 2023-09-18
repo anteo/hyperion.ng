@@ -1048,3 +1048,19 @@ input[type="checkbox"] .styled:checked + label::after,
 input[type="radio"] .styled:checked + label::after {
   color: #fff;
 }
+
+#layout_preview .panel-footer, #ledsim_dialog .modal-footer {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+#layout_preview .panel-footer .btn, #ledsim_dialog .modal-footer .btn {
+  margin: 0;
+  flex-grow: 1;
+}
+
+#ledsim_dialog .modal-footer:before, #ledsim_dialog .modal-footer:after {
+  content: none;
+}

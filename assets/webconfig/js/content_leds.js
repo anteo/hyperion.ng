@@ -802,19 +802,19 @@ $(document).ready(function () {
 
   $('#collapse1').on('shown.bs.collapse', function () {
     configPanel = "classic";
-    $("#leds_prev_toggle_keystone_correction_area").show();
+    $("#leds_prev_toggle_keystone_correction_area,#leds_prev_save").show();
     createClassicLeds();
   });
 
   $('#collapse2').on('shown.bs.collapse', function () {
     configPanel = "matrix";
-    $("#leds_prev_toggle_keystone_correction_area").hide();
+    $("#leds_prev_toggle_keystone_correction_area,#leds_prev_save").hide();
     createMatrixLeds();
   });
 
   $('#collapse5').on('shown.bs.collapse', function () {
     configPanel = "text";
-    $("#leds_prev_toggle_keystone_correction_area").hide();
+    $("#leds_prev_toggle_keystone_correction_area,#leds_prev_save").hide();
     createLedPreview(finalLedArray);
     aceEdt.set(finalLedArray);
   });
@@ -878,7 +878,7 @@ $(document).ready(function () {
   });
 
   // save led layout, the generated textfield configuration always represents the latest layout
-  $("#btn_ma_save, #btn_cl_save, #btn_bl_save, #leds_custom_save").off().on("click", function () {
+  $("#btn_ma_save, #btn_cl_save, #btn_bl_save, #leds_custom_save, #leds_prev_save").off().on("click", function () {
     var hardwareLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount").getValue();
     var layoutLedCount = aceEdt.get().length;
 
@@ -1302,6 +1302,7 @@ $(document).ready(function () {
       window.readOnlyMode ? $('#btn_cl_save').prop('disabled', true) : $('#btn_submit').prop('disabled', false);
       window.readOnlyMode ? $('#btn_ma_save').prop('disabled', true) : $('#btn_submit').prop('disabled', false);
       window.readOnlyMode ? $('#leds_custom_save').prop('disabled', true) : $('#btn_submit').prop('disabled', false);
+      window.readOnlyMode ? $('#leds_prev_save').prop('disabled', true) : $('#btn_submit').prop('disabled', false);
     });
 
     conf_editor.watch('root.specificOptions.hostList', () => {
